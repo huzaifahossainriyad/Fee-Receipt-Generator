@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOL ফি রশিদ জেনারেটর</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Tiro+Bangla:wght@400;700&display=swap" rel="stylesheet">
+
+    <!-- jsPDF and html2canvas for downloads -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Hind Siliguri', sans-serif;
+        }
+
+        .font-tiro {
+            font-family: 'Tiro Bangla', serif;
+        }
+
+        #receiptPreview {
+            font-family: 'Times New Roman', Times, serif;
+        }
+        
+        /* Custom styles for input with static prefix */
+        .prefixed-input {
+            display: flex;
+            align-items: center;
+        }
+
+        .prefixed-input .prefix {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #4b5563; /* gray-600 */
+            background-color: #f3f4f6; /* gray-100 */
+            border: 1px solid #d1d5db; /* gray-300 */
+            border-right: none;
+            border-radius: 0.375rem 0 0 0.375rem;
+            white-space: nowrap;
+        }
+
+        .prefixed-input input {
+            border-radius: 0 0.375rem 0.375rem 0;
+            border-left: none;
+        }
+
+        /* Custom style for the receipt's definition list */
+        .receipt-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            /* Tighter vertical gap */
+            gap: 0.125rem 1rem; 
+        }
+        .receipt-grid dt {
+            font-weight: bold;
+            grid-column: 1;
+        }
+        .receipt-grid dd {
+            grid-column: 2;
+        }
+        
+        /* Custom file input */
+        .file-input-wrapper {
+            width: 100%;
+            /* Reduced height for mobile */
+            height: 6rem;
+            position: relative;
+            cursor: pointer;
+        }
+        .file-input-label {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            border: 2px dashed #9ca3af; /* gray-400 */
+            border-radius: 0.5rem;
+            background-color: #f9fafb; /* gray-50 */
+            transition: background-color 0.2s;
+        }
+        .file-input-wrapper:hover .file-input-label {
+            background-color: #f3f4f6; /* gray-100 */
+        }
+        .file-input-wrapper input[type="file"] {
+            opacity: 0;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            cursor: pointer;
+        }
+
+        #closeModalBtn {
+            font-size: 2rem;
+            line-height: 1;
+            font-weight: bold;
+        }
+
+        /* Print styles */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            .print-area, .print-area * {
+                visibility: visible;
+            }
+            .print-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8 no-print">
+            <h1 class="text-2xl sm:text-4xl font-bold font-tiro text-blue-800">SOL ফি রশিদ জেনারেটর</h1>
+            <p class="text-sm text-gray-600 mt-2">আপনার তথ্য লিখুন এবং তাৎক্ষণিকভাবে আপনার ফি রশিদ তৈরি করুন।</p>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+            <!-- Left Column: Input Form -->
+            <section class="no-print bg-white p-4 sm:p-6 rounded-lg shadow-lg">
+                <div class="space-y-4 sm:space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">প্রতিষ্ঠানের লোগো আপলোড করুন</label>
+                        <div class="file-input-wrapper">
+                            <label for="logoUploader" class="file-input-label">
+                                <svg class="w-8 h-8 sm:w-10 sm:h-10 text-gray-500 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                                </svg>
+                                <span class="text-xs sm:text-sm text-gray-600">এখানে ক্লিক করুন</span>
+                                <span class="text-[10px] sm:text-xs text-gray-500">PNG, JPG, SVG</span>
+                            </label>
+                            <input type="file" id="logoUploader" accept="image/*" class="hidden">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label for="receiptNo" class="block text-sm font-medium text-gray-700 mb-1">Receipt No:</label>
+                             <div class="prefixed-input">
+                                <span class="prefix">25-06-</span>
+                                <input type="text" id="receiptNo" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            </div>
+                        </div>
+                         <div>
+                            <label for="userNo" class="block text-sm font-medium text-gray-700 mb-1">User:</label>
+                             <div class="prefixed-input">
+                                <span class="prefix">5564</span>
+                                <input type="text" id="userNo" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            </div>
+                        </div>
+                         <div>
+                            <label for="rollNo" class="block text-sm font-medium text-gray-700 mb-1">SOL Roll No:</label>
+                             <div class="prefixed-input">
+                                <span class="prefix">25-6-02-</span>
+                                <input type="text" id="rollNo" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="phoneNo" class="block text-sm font-medium text-gray-700 mb-1">Phone No:</label>
+                             <div class="prefixed-input">
+                                <span class="prefix">91554</span>
+                                <input type="text" id="phoneNo" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            </div>
+                        </div>
+                         <div>
+                            <label for="refNo" class="block text-sm font-medium text-gray-700 mb-1">Refe.No.:</label>
+                             <div class="prefixed-input">
+                                <span class="prefix">3452</span>
+                                <input type="text" id="refNo" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button id="randomBtn" class="w-full bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 transition-colors">Random সংখ্যা জেনারেট করুন</button>
+                    
+                    <hr>
+
+                    <h3 class="text-lg font-semibold text-gray-800 border-b pb-2">শিক্ষার্থীর তথ্য</h3>
+                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="sm:col-span-2">
+                            <label for="studentName" class="block text-sm font-medium text-gray-700 mb-1">Name:</label>
+                            <input type="text" id="studentName" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label for="fatherName" class="block text-sm font-medium text-gray-700 mb-1">Father's Name:</label>
+                            <input type="text" id="fatherName" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label for="motherName" class="block text-sm font-medium text-gray-700 mb-1">Mother's Name:</label>
+                            <input type="text" id="motherName" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label for="emailId" class="block text-sm font-medium text-gray-700 mb-1">Email Id:</label>
+                            <input type="email" id="emailId" class="w-full rounded-md border-gray-300 shadow-sm bg-gray-100" readonly>
+                        </div>
+                        <div>
+                            <label for="dob" class="block text-sm font-medium text-gray-700 mb-1">Date of Birth:</label>
+                            <input type="date" id="dob" value="2002-03-03" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-col sm:flex-row gap-3 pt-4">
+                        <button id="downloadPdfBtn" class="flex-1 bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition-colors">ডাউনলোড (PDF)</button>
+                        <button id="downloadPngBtn" class="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors">ডাউনলোড (PNG)</button>
+                        <button id="printBtn" class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors">প্রিন্ট করুন</button>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- Right Column: Receipt Preview -->
+            <section id="receipt-container" class="print-area">
+                 <div id="receiptPreview" class="bg-white p-3 sm:p-5 shadow-2xl rounded-lg border border-gray-200 text-black w-full aspect-[1/1.414] mx-auto relative overflow-hidden">
+                    <!-- Watermark -->
+                    <img id="watermarkLogo" src="https://picsum.photos/300/300" alt="Watermark" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-auto opacity-10 pointer-events-none">
+
+                    <!-- Header -->
+                    <div class="flex items-center justify-between pb-2 border-b-2 border-black">
+                        <img id="schoolLogo" src="https://picsum.photos/80/80" alt="School Logo" class="h-16 w-16 sm:h-20 sm:w-20 object-contain">
+                        <div class="text-center">
+                            <h2 class="text-lg sm:text-2xl font-bold">University of Delhi</h2>
+                            <h3 class="text-base sm:text-xl">School of Open Learning</h3>
+                            <p class="text-[11px] sm:text-sm">5, Cavalry Lane, Delhi - 110007</p>
+                        </div>
+                        <div class="w-16 sm:w-20"></div>
+                    </div>
+
+                    <!-- Title -->
+                    <div class="text-center my-2">
+                        <p class="font-bold text-sm sm:text-lg inline-block border border-black px-4 py-1">Fee Receipt (2024 - 2025)</p>
+                    </div>
+
+                    <!-- Student Info -->
+                    <div class="receipt-grid text-[11px] sm:text-sm mb-2">
+                        <dt>Receipt No.:</dt> <dd><span id="receiptNoOut"></span></dd>
+                        <dt>SOL Roll No.:</dt> <dd><span id="rollNoOut"></span></dd>
+                        <dt>Student's Name:</dt> <dd><span id="studentNameOut"></span></dd>
+                        <dt>Father's Name:</dt> <dd><span id="fatherNameOut"></span></dd>
+                        <dt>Mother's Name:</dt> <dd><span id="motherNameOut"></span></dd>
+                        <dt>Date of Birth:</dt> <dd><span id="dobOut"></span></dd>
+                        <dt>Email Id:</dt> <dd><span id="emailOut"></span></dd>
+                        <dt>Phone No.:</dt> <dd><span id="phoneNoOut"></span></dd>
+                    </div>
+
+                    <!-- Payment Details Table -->
+                    <table class="w-full border-collapse border border-black text-[11px] sm:text-sm mb-2">
+                        <thead>
+                            <tr class="bg-gray-200">
+                                <th class="border border-black p-1 text-left">Fee Head</th>
+                                <th class="border border-black p-1 text-right">Amount (in Rupees)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td class="border border-black p-1">Admission Fee</td><td class="border border-black p-1 text-right">200.00</td></tr>
+                            <tr><td class="border border-black p-1">Tuition Fee</td><td class="border border-black p-1 text-right">96.00</td></tr>
+                            <tr><td class="border border-black p-1">University Development Fee</td><td class="border border-black p-1 text-right">900.00</td></tr>
+                            <tr><td class="border border-black p-1">College Student's Welfare Fund</td><td class="border border-black p-1 text-right">100.00</td></tr>
+                            <tr><td class="border border-black p-1">University Student's Welfare Fund</td><td class="border border-black p-1 text-right">100.00</td></tr>
+                            <tr><td class="border border-black p-1">Faculty/Departmental Management</td><td class="border border-black p-1 text-right">400.00</td></tr>
+                            <tr class="font-bold">
+                                <td class="border border-black p-1">Total Amount</td>
+                                <td class="border border-black p-1 text-right">1796.00</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <p class="text-[11px] sm:text-sm font-bold mb-2">Amount in Words: Rupees One Thousand Seven Hundred Ninety Six Only.</p>
+                    
+                     <div class="receipt-grid text-[11px] sm:text-sm mb-2">
+                        <dt>Payment Date:</dt> <dd><span id="paymentDateOut"></span></dd>
+                        <dt>User:</dt> <dd><span id="userOut"></span></dd>
+                        <dt>Refe.No.:</dt> <dd><span id="refNoOut"></span></dd>
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="text-[10px] sm:text-xs mt-2">
+                        <p class="font-bold">Note:</p>
+                        <ol class="list-decimal list-inside">
+                            <li>This is a computer-generated receipt and does not require a signature.</li>
+                            <li>Fee once paid is not refundable.</li>
+                            <li>Student must preserve this receipt for future reference.</li>
+                        </ol>
+                    </div>
+                 </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Print Preview Modal -->
+    <div id="printPreviewModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden no-print">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+            <header class="p-4 border-b flex justify-between items-center">
+                <h3 class="text-xl font-semibold">Print Preview</h3>
+                <button id="closeModalBtn" class="text-gray-500 hover:text-gray-800">&times;</button>
+            </header>
+            <main id="modalBody" class="p-6 overflow-y-auto bg-gray-100">
+                <!-- Receipt clone will be injected here -->
+            </main>
+            <footer class="p-4 bg-gray-50 border-t flex justify-end gap-3">
+                <button id="cancelPrintBtn" class="bg-gray-300 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-400 transition-colors">Cancel</button>
+                <button id="confirmPrintBtn" class="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors">Confirm Print</button>
+            </footer>
+        </div>
+    </div>
+
+    <script>
+        window.onload = () => {
+            const inputs = {
+                receiptNo: document.getElementById('receiptNo'),
+                userNo: document.getElementById('userNo'),
+                rollNo: document.getElementById('rollNo'),
+                phoneNo: document.getElementById('phoneNo'),
+                refNo: document.getElementById('refNo'),
+                studentName: document.getElementById('studentName'),
+                fatherName: document.getElementById('fatherName'),
+                motherName: document.getElementById('motherName'),
+                emailId: document.getElementById('emailId'),
+                dob: document.getElementById('dob'),
+                logoUploader: document.getElementById('logoUploader'),
+            };
+
+            const outputs = {
+                receiptNoOut: document.getElementById('receiptNoOut'),
+                rollNoOut: document.getElementById('rollNoOut'),
+                studentNameOut: document.getElementById('studentNameOut'),
+                fatherNameOut: document.getElementById('fatherNameOut'),
+                motherNameOut: document.getElementById('motherNameOut'),
+                dobOut: document.getElementById('dobOut'),
+                emailOut: document.getElementById('emailOut'),
+                phoneNoOut: document.getElementById('phoneNoOut'),
+                paymentDateOut: document.getElementById('paymentDateOut'),
+                userOut: document.getElementById('userOut'),
+                refNoOut: document.getElementById('refNoOut'),
+                schoolLogo: document.getElementById('schoolLogo'),
+                watermarkLogo: document.getElementById('watermarkLogo')
+            };
+
+            const buttons = {
+                randomBtn: document.getElementById('randomBtn'),
+                downloadPdfBtn: document.getElementById('downloadPdfBtn'),
+                downloadPngBtn: document.getElementById('downloadPngBtn'),
+                printBtn: document.getElementById('printBtn')
+            };
+            
+            // Modal elements
+            const printPreviewModal = document.getElementById('printPreviewModal');
+            const modalBody = document.getElementById('modalBody');
+            const closeModalBtn = document.getElementById('closeModalBtn');
+            const cancelPrintBtn = document.getElementById('cancelPrintBtn');
+            const confirmPrintBtn = document.getElementById('confirmPrintBtn');
+
+            const prefixes = {
+                receiptNo: '25-06-',
+                userNo: '5564',
+                rollNo: '25-6-02-',
+                phoneNo: '91554',
+                refNo: '3452'
+            };
+
+            const generateEmail = () => {
+                const name = inputs.studentName.value.trim().toLowerCase().split(' ')[0] || 'student';
+                const roll = (prefixes.rollNo + inputs.rollNo.value).replace(/-/g, '');
+                const email = `${name}${roll}@sol.du.ac.in`;
+                inputs.emailId.value = email;
+                outputs.emailOut.innerText = email;
+            };
+
+            const updateReceipt = () => {
+                outputs.receiptNoOut.innerText = prefixes.receiptNo + inputs.receiptNo.value;
+                outputs.rollNoOut.innerText = prefixes.rollNo + inputs.rollNo.value;
+                outputs.userOut.innerText = prefixes.userNo + inputs.userNo.value;
+                outputs.phoneNoOut.innerText = prefixes.phoneNo + inputs.phoneNo.value;
+                outputs.refNoOut.innerText = prefixes.refNo + inputs.refNo.value;
+
+                outputs.studentNameOut.innerText = inputs.studentName.value || ' ';
+                outputs.fatherNameOut.innerText = inputs.fatherName.value || ' ';
+                outputs.motherNameOut.innerText = inputs.motherName.value || ' ';
+
+                const dobValue = inputs.dob.value;
+                if (dobValue) {
+                    const [year, month, day] = dobValue.split('-');
+                    outputs.dobOut.innerText = `${day}-${month}-${year}`;
+                } else {
+                    outputs.dobOut.innerText = ' ';
+                }
+                
+                const today = new Date();
+                outputs.paymentDateOut.innerText = today.toLocaleDateString('en-GB').replace(/\//g, '-');
+                
+                generateEmail();
+            };
+
+            const generateRandoms = () => {
+                inputs.receiptNo.value = Math.floor(100000 + Math.random() * 900000);
+                inputs.userNo.value = Math.floor(1000 + Math.random() * 9000);
+                inputs.rollNo.value = Math.floor(100000 + Math.random() * 900000);
+                inputs.phoneNo.value = Math.floor(10000 + Math.random() * 90000);
+                inputs.refNo.value = Math.floor(1000 + Math.random() * 9000);
+                updateReceipt();
+            };
+
+            const handleLogoUpload = (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const imageUrl = e.target.result;
+                        outputs.schoolLogo.src = imageUrl;
+                        outputs.watermarkLogo.src = imageUrl;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            
+            const downloadAsImage = () => {
+                const receiptElement = document.getElementById('receiptPreview');
+                html2canvas(receiptElement, { scale: 3 }).then(canvas => {
+                    const link = document.createElement('a');
+                    const studentName = inputs.studentName.value.replace(/\s/g, '_') || 'receipt';
+                    const receiptNum = inputs.receiptNo.value;
+                    link.download = `Fee_Receipt_${studentName}_${receiptNum}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                });
+            };
+
+            const downloadAsPDF = () => {
+                const { jsPDF } = window.jspdf;
+                const receiptElement = document.getElementById('receiptPreview');
+
+                html2canvas(receiptElement, { scale: 3 }).then(canvas => {
+                    const imgData = canvas.toDataURL('image/png');
+                    const pdf = new jsPDF('p', 'mm', 'a4');
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pdfHeight = pdf.internal.pageSize.getHeight();
+                    
+                    const canvasWidth = canvas.width;
+                    const canvasHeight = canvas.height;
+                    const ratio = canvasWidth / canvasHeight;
+
+                    let imgWidth = pdfWidth;
+                    let imgHeight = imgWidth / ratio;
+                    
+                    if (imgHeight > pdfHeight) {
+                        imgHeight = pdfHeight;
+                        imgWidth = imgHeight * ratio;
+                    }
+
+                    const x = (pdfWidth - imgWidth) / 2;
+                    const y = (pdfHeight - imgHeight) / 2;
+
+                    pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+
+                    const studentName = inputs.studentName.value.replace(/\s/g, '_') || 'receipt';
+                    const receiptNum = inputs.receiptNo.value;
+                    pdf.save(`Fee_Receipt_${studentName}_${receiptNum}.pdf`);
+                });
+            };
+
+            // Print Preview Logic
+            const openPrintPreview = () => {
+                const receiptContainer = document.getElementById('receiptPreview');
+                const receiptClone = receiptContainer.cloneNode(true);
+                modalBody.innerHTML = ''; // Clear previous preview
+                modalBody.appendChild(receiptClone);
+                printPreviewModal.classList.remove('hidden');
+            };
+
+            const closePrintPreview = () => {
+                printPreviewModal.classList.add('hidden');
+            };
+
+            const executePrint = () => {
+                closePrintPreview();
+                 // Use a small timeout to allow the modal to visually disappear before the print dialog appears
+                setTimeout(() => {
+                    window.print();
+                }, 100);
+            };
+
+
+            // Event Listeners
+            Object.values(inputs).forEach(input => {
+                if (input.id !== 'logoUploader') {
+                    input.addEventListener('input', updateReceipt);
+                }
+            });
+            
+            inputs.logoUploader.addEventListener('change', handleLogoUpload);
+            buttons.randomBtn.addEventListener('click', generateRandoms);
+            buttons.downloadPngBtn.addEventListener('click', downloadAsImage);
+            buttons.downloadPdfBtn.addEventListener('click', downloadAsPDF);
+            
+            // New Print Flow
+            buttons.printBtn.addEventListener('click', openPrintPreview);
+            closeModalBtn.addEventListener('click', closePrintPreview);
+            cancelPrintBtn.addEventListener('click', closePrintPreview);
+            confirmPrintBtn.addEventListener('click', executePrint);
+
+            // Initial state
+            generateRandoms();
+            updateReceipt();
+        };
+    </script>
+</body>
+</html>

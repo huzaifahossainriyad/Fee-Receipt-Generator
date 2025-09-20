@@ -1,0 +1,5 @@
+{
+  "name": "Fee Receipt Generator",
+  "description": "A responsive, single-file web application to generate and print university fee receipts. It features real-time data preview, random data generation, and options to download the receipt as a PDF or PNG.",
+  "requestFramePermissions": []
+}
